@@ -122,6 +122,7 @@ class QuizRequest(BaseModel):
     subject: str
     topic: str
     subtopic: Optional[str] = None
+    grade: Optional[str] = None
     difficulty: str = "medium"
     num_questions: int = 5
 
