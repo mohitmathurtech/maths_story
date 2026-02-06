@@ -169,6 +169,26 @@ export default function Dashboard({ user, onLogout }) {
               </motion.div>
             </div>
 
+            {/* Admin Panel Link */}
+            {user?.role === "admin" && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-12"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  onClick={() => navigate("/admin")}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white cursor-pointer shadow-lg"
+                  data-testid="admin-panel-card"
+                >
+                  <Shield className="w-10 h-10 mb-4" />
+                  <h3 className="text-2xl font-serif mb-2">Admin Panel</h3>
+                  <p className="text-purple-100">Manage subjects, topics, and knowledge base</p>
+                </motion.div>
+              </motion.div>
+            )}
+
             {/* Recent Activity */}
             {stats?.recent_results && stats.recent_results.length > 0 && (
               <div>
