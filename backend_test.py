@@ -253,6 +253,160 @@ class QuizPlatformTester:
             return True
         return False
 
+    def test_get_all_grades(self):
+        """Test GET /api/admin/grades endpoint"""
+        if not self.admin_token:
+            print("   ⚠️ Cannot test grades - no admin token")
+            return False
+        
+        # Switch to admin token temporarily
+        original_token = self.token
+        self.token = self.admin_token
+        
+        success, response = self.run_test("Get All Grades", "GET", "admin/grades", 200)
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success and isinstance(response, list):
+            print(f"   ✓ Found {len(response)} grades")
+            for grade in response:
+                if 'name' in grade and 'order' in grade:
+                    print(f"   ✓ Grade: {grade['name']} (Order: {grade['order']})")
+                else:
+                    print(f"   ❌ Invalid grade structure: {grade}")
+                    return False
+            return True
+        return False
+
+    def test_get_active_subjects(self):
+        """Test GET /api/subjects/active endpoint (public)"""
+        success, response = self.run_test("Get Active Subjects", "GET", "subjects/active", 200, auth_required=False)
+        
+        if success and isinstance(response, list):
+            print(f"   ✓ Found {len(response)} active subjects")
+            for subject in response:
+                if 'name' in subject and 'is_active' in subject:
+                    if subject['is_active']:
+                        print(f"   ✓ Active Subject: {subject['name']}")
+                    else:
+                        print(f"   ❌ Found inactive subject in active list: {subject['name']}")
+                        return False
+                else:
+                    print(f"   ❌ Invalid subject structure: {subject}")
+                    return False
+            return True
+        return False
+
+    def test_get_all_subjects(self):
+        """Test GET /api/admin/subjects endpoint"""
+        if not self.admin_token:
+            print("   ⚠️ Cannot test admin subjects - no admin token")
+            return False
+        
+        # Switch to admin token temporarily
+        original_token = self.token
+        self.token = self.admin_token
+        
+        success, response = self.run_test("Get All Subjects (Admin)", "GET", "admin/subjects", 200)
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success and isinstance(response, list):
+            print(f"   ✓ Found {len(response)} subjects (including inactive)")
+            active_count = sum(1 for s in response if s.get('is_active', False))
+            inactive_count = len(response) - active_count
+            print(f"   ✓ Active: {active_count}, Inactive: {inactive_count}")
+            return True
+        return False
+
+    def test_create_grade(self):
+        """Test POST /api/admin/grades endpoint"""
+        if not self.admin_token:
+            print("   ⚠️ Cannot test create grade - no admin token")
+            return False
+        
+        # Switch to admin token temporarily
+        original_token = self.token
+        self.token = self.admin_token
+        
+        grade_data = {
+            "name": f"Test Grade {int(time.time())}",
+            "order": 99
+        }
+        
+        success, response = self.run_test("Create Grade", "POST", "admin/grades", 200, grade_data)
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success and 'id' in response:
+            self.created_grade_id = response['id']
+            print(f"   ✓ Grade created with ID: {self.created_grade_id}")
+            print(f"   ✓ Grade name: {response.get('name', 'N/A')}")
+            return True
+        return False
+
+    def test_create_subject(self):
+        """Test POST /api/admin/subjects endpoint"""
+        if not self.admin_token:
+            print("   ⚠️ Cannot test create subject - no admin token")
+            return False
+        
+        # Switch to admin token temporarily  
+        original_token = self.token
+        self.token = self.admin_token
+        
+        subject_data = {
+            "name": f"Test Subject {int(time.time())}",
+            "description": "Test subject for API testing",
+            "is_active": True
+        }
+        
+        success, response = self.run_test("Create Subject", "POST", "admin/subjects", 200, subject_data)
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success and 'id' in response:
+            self.created_subject_id = response['id']
+            print(f"   ✓ Subject created with ID: {self.created_subject_id}")
+            print(f"   ✓ Subject name: {response.get('name', 'N/A')}")
+            print(f"   ✓ Is active: {response.get('is_active', 'N/A')}")
+            return True
+        return False
+
+    def test_quiz_generation_with_grade(self):
+        """Test AI quiz generation with grade parameter"""
+        quiz_request = {
+            "subject": "Mathematics",
+            "topic": "Basic Algebra", 
+            "subtopic": "Linear Equations",
+            "grade": "Grade 5",
+            "difficulty": "medium",
+            "num_questions": 3
+        }
+        
+        print("   🤖 Testing AI integration with grade parameter - this may take a few seconds...")
+        success, response = self.run_test("Quiz Generation with Grade", "POST", "quiz/generate", 200, quiz_request)
+        
+        if success and 'id' in response and 'questions' in response:
+            self.quiz_id = response['id']
+            questions = response['questions']
+            print(f"   ✓ Quiz generated with {len(questions)} questions for Grade 5")
+            print(f"   ✓ Quiz ID: {self.quiz_id}")
+            
+            # Validate question structure
+            for i, q in enumerate(questions):
+                if 'id' in q and 'question' in q and 'type' in q:
+                    print(f"   ✓ Question {i+1}: {q['type']} - {q['question'][:50]}...")
+                else:
+                    print(f"   ❌ Question {i+1}: Invalid structure")
+                    return False
+            return True
+        return False
+
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
         print("🚀 Starting Comprehensive Backend API Testing")
