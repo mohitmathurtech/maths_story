@@ -126,6 +126,16 @@ function App() {
             )
           }
         />
+        <Route
+          path="/admin"
+          element={
+            isAuthenticated ? (
+              <AdminPanel user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/auth" />
+            )
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
