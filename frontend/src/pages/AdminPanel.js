@@ -375,9 +375,20 @@ export default function AdminPanel({ user, onLogout }) {
                   data-testid={`subject-${subject.id}`}
                 >
                   <h3 className="text-lg font-semibold text-primary mb-2">{subject.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground mb-3">
                     {subject.description || "No description"}
                   </p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        subject.is_active
+                          ? "bg-success/10 text-success"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {subject.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
