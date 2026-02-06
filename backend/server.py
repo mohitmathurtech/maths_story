@@ -62,18 +62,31 @@ class User(BaseModel):
     badges: List[str] = []
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+class Grade(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    order: int
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class GradeCreate(BaseModel):
+    name: str
+    order: int
+
 class Subject(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: Optional[str] = None
     icon: Optional[str] = None
+    is_active: bool = True
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class SubjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
     icon: Optional[str] = None
+    is_active: bool = True
 
 class Topic(BaseModel):
     model_config = ConfigDict(extra="ignore")
