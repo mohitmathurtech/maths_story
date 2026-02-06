@@ -21,7 +21,8 @@ import api from "@/utils/api";
 
 export default function AdminPanel({ user, onLogout }) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("subjects");
+  const [activeTab, setActiveTab] = useState("grades");
+  const [grades, setGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [topics, setTopics] = useState([]);
   const [subtopics, setSubtopics] = useState([]);
@@ -46,7 +47,10 @@ export default function AdminPanel({ user, onLogout }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (activeTab === "subjects") {
+      if (activeTab === "grades") {
+        const response = await api.get("/admin/grades");
+        setGrades(response.data);
+      } else if (activeTab === "subjects") {
         const response = await api.get("/admin/subjects");
         setSubjects(response.data);
       } else if (activeTab === "topics") {
