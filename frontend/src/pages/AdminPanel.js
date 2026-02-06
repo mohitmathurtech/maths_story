@@ -230,10 +230,22 @@ export default function AdminPanel({ user, onLogout }) {
 
       <div className="container mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-border">
+        <div className="flex gap-2 mb-8 border-b border-border overflow-x-auto">
+          <button
+            onClick={() => setActiveTab("grades")}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+              activeTab === "grades"
+                ? "border-b-2 border-accent text-accent"
+                : "text-muted-foreground hover:text-primary"
+            }`}
+            data-testid="grades-tab"
+          >
+            <BookOpen className="w-4 h-4 inline mr-2" />
+            Grades
+          </button>
           <button
             onClick={() => setActiveTab("subjects")}
-            className={`px-6 py-3 font-medium transition-colors ${
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
               activeTab === "subjects"
                 ? "border-b-2 border-accent text-accent"
                 : "text-muted-foreground hover:text-primary"
