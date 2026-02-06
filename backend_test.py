@@ -121,6 +121,23 @@ class QuizPlatformTester:
             return True
         return False
 
+    def test_admin_login(self):
+        """Test admin user login"""
+        admin_credentials = {
+            "email": "test@example.com",
+            "password": "admin123"
+        }
+        
+        success, response = self.run_test("Admin Login", "POST", "auth/login", 200, admin_credentials, auth_required=False)
+        
+        if success and 'token' in response and 'user' in response:
+            self.admin_token = response['token']
+            self.admin_data = response['user']
+            print(f"   ✓ Admin login successful: {self.admin_data.get('name', 'N/A')}")
+            print(f"   ✓ Admin role: {self.admin_data.get('role', 'N/A')}")
+            return True
+        return False
+
     def test_get_me(self):
         """Test getting current user info"""
         success, response = self.run_test("Get Current User", "GET", "auth/me", 200)
