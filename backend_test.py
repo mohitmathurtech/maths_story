@@ -410,16 +410,32 @@ class QuizPlatformTester:
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
         print("🚀 Starting Comprehensive Backend API Testing")
+        print("Testing NEW ADMIN SYSTEM with Grade Management")
         print("=" * 60)
         
         # Test sequence
         test_results = {
             "server_health": self.test_server_health(),
             "signup": self.test_signup(),
-            "login": self.test_login(), 
+            "login": self.test_login(),
+            "admin_login": self.test_admin_login(), 
             "get_me": self.test_get_me(),
+            
+            # NEW: Admin grade management tests
+            "get_all_grades": self.test_get_all_grades(),
+            "create_grade": self.test_create_grade(),
+            
+            # NEW: Admin subject management tests
+            "get_all_subjects": self.test_get_all_subjects(),
+            "get_active_subjects": self.test_get_active_subjects(),
+            "create_subject": self.test_create_subject(),
+            
+            # Quiz generation tests (updated with grade parameter)
             "quiz_generation": self.test_quiz_generation(),
+            "quiz_generation_with_grade": self.test_quiz_generation_with_grade(),
             "quiz_submission": self.test_quiz_submission(),
+            
+            # Analytics tests
             "dashboard_analytics": self.test_dashboard_analytics(),
             "leaderboard": self.test_leaderboard(),
             "topic_leaderboard": self.test_topic_leaderboard()
@@ -429,20 +445,40 @@ class QuizPlatformTester:
         print("📊 TEST SUMMARY")
         print("=" * 60)
         
+        # Categorize results
+        admin_tests = ["admin_login", "get_all_grades", "create_grade", "get_all_subjects", "get_active_subjects", "create_subject"]
+        new_feature_tests = ["quiz_generation_with_grade", "get_all_grades", "get_active_subjects"]
+        
         failed_tests = []
+        admin_failed = []
+        new_feature_failed = []
+        
         for test_name, passed in test_results.items():
             status = "✅ PASSED" if passed else "❌ FAILED"
             print(f"{test_name.replace('_', ' ').title()}: {status}")
             if not passed:
                 failed_tests.append(test_name)
+                if test_name in admin_tests:
+                    admin_failed.append(test_name)
+                if test_name in new_feature_tests:
+                    new_feature_failed.append(test_name)
         
         print(f"\nOverall: {self.tests_passed}/{self.tests_run} tests passed")
         
+        # Specific feedback for new features
+        if new_feature_failed:
+            print(f"\n🚨 NEW FEATURES FAILING: {', '.join(new_feature_failed)}")
+        else:
+            print(f"\n✅ All new admin/grade management features working!")
+        
+        if admin_failed:
+            print(f"\n🚨 ADMIN FEATURES FAILING: {', '.join(admin_failed)}")
+        
         if failed_tests:
-            print(f"\n⚠️  Failed tests: {', '.join(failed_tests)}")
+            print(f"\n⚠️  All failed tests: {', '.join(failed_tests)}")
             return False
         else:
-            print(f"\n🎉 All tests passed! Backend API is fully functional.")
+            print(f"\n🎉 All tests passed! Backend API with new admin system is fully functional.")
             return True
 
 def main():
