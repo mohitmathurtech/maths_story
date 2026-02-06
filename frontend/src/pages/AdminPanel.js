@@ -95,7 +95,15 @@ export default function AdminPanel({ user, onLogout }) {
     setLoading(true);
 
     try {
-      if (modalType === "subject") {
+      if (modalType === "grade") {
+        if (editingItem) {
+          await api.put(`/admin/grades/${editingItem.id}`, formData);
+          toast.success("Grade updated");
+        } else {
+          await api.post("/admin/grades", formData);
+          toast.success("Grade created");
+        }
+      } else if (modalType === "subject") {
         if (editingItem) {
           await api.put(`/admin/subjects/${editingItem.id}`, formData);
           toast.success("Subject updated");
