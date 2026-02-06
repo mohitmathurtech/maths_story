@@ -259,11 +259,47 @@ async def google_auth(auth_request: GoogleAuthRequest):
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+# ============ Admin - Grade Management ============
+
+@api_router.get("/admin/grades")
+async def list_grades(current_user: User = Depends(get_current_user)):
+    grades = await db.grades.find({}, {"_id": 0}).sort("order", 1).to_list(1000)
+    return grades
+
+@api_router.post("/admin/grades")
+async def create_grade(grade_data: GradeCreate, admin: User = Depends(get_current_admin)):
+    grade = Grade(**grade_data.model_dump())
+    await db.grades.insert_one(grade.model_dump())
+    return grade
+
+@api_router.put("/admin/grades/{grade_id}")
+async def update_grade(grade_id: str, grade_data: GradeCreate, admin: User = Depends(get_current_admin)):
+    result = await db.grades.update_one(
+        {"id": grade_id},
+        {"$set": grade_data.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Grade not found")
+    return {"message": "Grade updated successfully"}
+
+@api_router.delete("/admin/grades/{grade_id}")
+async def delete_grade(grade_id: str, admin: User = Depends(get_current_admin)):
+    result = await db.grades.delete_one({"id": grade_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Grade not found")
+    return {"message": "Grade deleted successfully"}
+
 # ============ Admin - Subject Management ============
 
 @api_router.get("/admin/subjects")
 async def list_subjects(current_user: User = Depends(get_current_user)):
     subjects = await db.subjects.find({}, {"_id": 0}).to_list(1000)
+    return subjects
+
+@api_router.get("/subjects/active")
+async def list_active_subjects():
+    """Public endpoint for quiz creation - only returns active subjects"""
+    subjects = await db.subjects.find({"is_active": True}, {"_id": 0}).to_list(1000)
     return subjects
 
 @api_router.post("/admin/subjects")
