@@ -612,23 +612,68 @@ export default function AdminPanel({ user, onLogout }) {
               {editingItem ? "Edit" : "Create"} {modalType}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Name *</Label>
-                <Input
-                  value={formData.name || ""}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  data-testid="modal-name-input"
-                />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Input
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  data-testid="modal-description-input"
-                />
-              </div>
+              {modalType === "grade" && (
+                <>
+                  <div>
+                    <Label>Grade Name *</Label>
+                    <Input
+                      value={formData.name || ""}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g., Grade 10"
+                      required
+                      data-testid="modal-name-input"
+                    />
+                  </div>
+                  <div>
+                    <Label>Order (for sorting) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.order || ""}
+                      onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                      placeholder="e.g., 10"
+                      required
+                      data-testid="modal-order-input"
+                    />
+                  </div>
+                </>
+              )}
+              
+              {(modalType === "subject" || modalType === "topic" || modalType === "subtopic") && (
+                <>
+                  <div>
+                    <Label>Name *</Label>
+                    <Input
+                      value={formData.name || ""}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      data-testid="modal-name-input"
+                    />
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Input
+                      value={formData.description || ""}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      data-testid="modal-description-input"
+                    />
+                  </div>
+                  {modalType === "subject" && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={formData.is_active !== false}
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="w-4 h-4"
+                        data-testid="modal-active-checkbox"
+                      />
+                      <Label htmlFor="is_active" className="cursor-pointer">
+                        Active (appears in quiz creation)
+                      </Label>
+                    </div>
+                  )}
+                </>
+              )}
               <div className="flex gap-3">
                 <Button type="submit" disabled={loading} className="flex-1" data-testid="modal-submit-btn">
                   {loading ? "Saving..." : "Save"}
