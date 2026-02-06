@@ -349,7 +349,12 @@ export default function AdminPanel({ user, onLogout }) {
         {activeTab === "subjects" && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-serif text-primary">Manage Subjects</h2>
+              <div>
+                <h2 className="text-2xl font-serif text-primary">Manage Subjects</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Control what subjects appear in quiz creation dropdown
+                </p>
+              </div>
               <Button
                 onClick={() => openModal("subject")}
                 className="bg-accent text-white rounded-full"
