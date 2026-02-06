@@ -11,13 +11,33 @@ import api from "@/utils/api";
 export default function QuizSelection({ user, onLogout }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [subjects, setSubjects] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [formData, setFormData] = useState({
     subject: "",
     topic: "",
     subtopic: "",
+    grade: "",
     difficulty: "medium",
     num_questions: 5,
   });
+
+  useEffect(() => {
+    loadSubjectsAndGrades();
+  }, []);
+
+  const loadSubjectsAndGrades = async () => {
+    try {
+      const [subjectsRes, gradesRes] = await Promise.all([
+        api.get("/subjects/active"),
+        api.get("/admin/grades"),
+      ]);
+      setSubjects(subjectsRes.data);
+      setGrades(gradesRes.data);
+    } catch (error) {
+      console.error("Failed to load subjects/grades:", error);
+    }
+  };
 
   const handleGenerate = async (e) => {
     e.preventDefault();
