@@ -12,6 +12,7 @@ import Results from "@/pages/Results";
 import Analytics from "@/pages/Analytics";
 import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
+import AdminPanel from "@/pages/AdminPanel";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
