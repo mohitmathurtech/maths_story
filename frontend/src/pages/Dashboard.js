@@ -11,6 +11,7 @@ import {
   BarChart3,
   Medal,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
