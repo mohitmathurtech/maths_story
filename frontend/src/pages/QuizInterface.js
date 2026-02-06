@@ -107,6 +107,19 @@ export default function QuizInterface({ user }) {
     );
   }
 
+  if (!quiz.questions || quiz.questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">No questions available</p>
+          <Button onClick={() => navigate("/quiz/select")}>
+            Generate New Quiz
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const currentQuestion = quiz.questions[currentIndex];
   const progress = ((currentIndex + 1) / quiz.questions.length) * 100;
 
