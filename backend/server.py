@@ -491,13 +491,19 @@ async def generate_quiz(request: QuizRequest, current_user: User = Depends(get_c
         if context_text:
             context_instruction = f"\n\nUSE THIS KNOWLEDGE BASE CONTEXT:\n{context_text[:4000]}\n\nGenerate questions strictly based on this context.\n"
         
+        grade_instruction = ""
+        if request.grade:
+            grade_instruction = f"\nGrade Level: {request.grade}\nAdjust question complexity and language to suit {request.grade} students.\n"
+        
         prompt = f"""
 Create {request.num_questions} quiz questions for:
 Subject: {request.subject}
 Topic: {request.topic}
 {f'Subtopic: {request.subtopic}' if request.subtopic else ''}
+{f'Grade: {request.grade}' if request.grade else ''}
 Difficulty: {request.difficulty}
 {context_instruction}
+{grade_instruction}
 For each question, include:
 1. question text
 2. type ("mcq" or "alphanumeric")
