@@ -36,6 +36,7 @@ export default function QuizSelection({ user, onLogout }) {
       setGrades(gradesRes.data);
     } catch (error) {
       console.error("Failed to load subjects/grades:", error);
+      toast.error("Failed to load subjects or grades");
     }
   };
 
