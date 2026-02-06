@@ -8,11 +8,15 @@ class QuizPlatformTester:
     def __init__(self, base_url="https://focus-learn-10.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
+        self.admin_token = None
         self.user_data = None
+        self.admin_data = None
         self.tests_run = 0
         self.tests_passed = 0
         self.quiz_id = None
         self.result_id = None
+        self.created_grade_id = None
+        self.created_subject_id = None
 
     def log_test(self, name, success, details=""):
         """Log test results"""
