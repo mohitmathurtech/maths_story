@@ -22,8 +22,20 @@ export default function QuizInterface({ user }) {
   useEffect(() => {
     const storedQuiz = sessionStorage.getItem("currentQuiz");
     if (storedQuiz) {
-      setQuiz(JSON.parse(storedQuiz));
-      setQuestionStartTime(Date.now());
+      try {
+        const parsedQuiz = JSON.parse(storedQuiz);
+        if (!parsedQuiz.questions || parsedQuiz.questions.length === 0) {
+          toast.error("Quiz has no questions");
+          navigate("/quiz/select");
+          return;
+        }
+        setQuiz(parsedQuiz);
+        setQuestionStartTime(Date.now());
+      } catch (error) {
+        console.error("Error parsing quiz:", error);
+        toast.error("Failed to load quiz");
+        navigate("/quiz/select");
+      }
     } else {
       toast.error("Quiz not found");
       navigate("/quiz/select");
