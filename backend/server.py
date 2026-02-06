@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +15,8 @@ import jwt
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 import json
 import asyncio
+import PyPDF2
+import io
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -33,6 +35,9 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 
+UPLOAD_DIR = ROOT_DIR / "uploads" / "pdfs"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
 # ============ Models ============
 
 class UserCreate(BaseModel):
@@ -49,12 +54,53 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: EmailStr
     name: str
+    role: str = "user"  # "user" or "admin"
     points: int = 0
     level: int = 1
     streak: int = 0
     last_activity: Optional[str] = None
     badges: List[str] = []
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class Subject(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class SubjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+
+class Topic(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject_id: str
+    name: str
+    description: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class TopicCreate(BaseModel):
+    subject_id: str
+    name: str
+    description: Optional[str] = None
+
+class Subtopic(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    topic_id: str
+    name: str
+    description: Optional[str] = None
+    knowledge_base_files: List[str] = []  # PDF file paths
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class SubtopicCreate(BaseModel):
+    topic_id: str
+    name: str
+    description: Optional[str] = None
 
 class GoogleAuthRequest(BaseModel):
     token: str
@@ -141,6 +187,25 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_current_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+# ============ PDF Helper ============
+
+def extract_text_from_pdf(pdf_content: bytes) -> str:
+    try:
+        pdf_file = io.BytesIO(pdf_content)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        logging.error(f"PDF extraction error: {str(e)}")
+        return ""
+
 # ============ Auth Routes ============
 
 @api_router.post("/auth/signup")
@@ -151,7 +216,8 @@ async def signup(user_data: UserCreate):
     
     user = User(
         email=user_data.email,
-        name=user_data.name
+        name=user_data.name,
+        role="user"
     )
     user_dict = user.model_dump()
     user_dict["password"] = hash_password(user_data.password)
@@ -173,24 +239,207 @@ async def login(credentials: UserLogin):
 
 @api_router.post("/auth/google")
 async def google_auth(auth_request: GoogleAuthRequest):
-    # Placeholder for Emergent Google OAuth integration
-    # In production, validate token with Google/Emergent service
     raise HTTPException(status_code=501, detail="Google OAuth integration pending")
 
 @api_router.get("/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+# ============ Admin - Subject Management ============
+
+@api_router.get("/admin/subjects")
+async def list_subjects(current_user: User = Depends(get_current_user)):
+    subjects = await db.subjects.find({}, {"_id": 0}).to_list(1000)
+    return subjects
+
+@api_router.post("/admin/subjects")
+async def create_subject(subject_data: SubjectCreate, admin: User = Depends(get_current_admin)):
+    subject = Subject(**subject_data.model_dump())
+    await db.subjects.insert_one(subject.model_dump())
+    return subject
+
+@api_router.put("/admin/subjects/{subject_id}")
+async def update_subject(subject_id: str, subject_data: SubjectCreate, admin: User = Depends(get_current_admin)):
+    result = await db.subjects.update_one(
+        {"id": subject_id},
+        {"$set": subject_data.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return {"message": "Subject updated successfully"}
+
+@api_router.delete("/admin/subjects/{subject_id}")
+async def delete_subject(subject_id: str, admin: User = Depends(get_current_admin)):
+    # Also delete related topics and subtopics
+    topics = await db.topics.find({"subject_id": subject_id}, {"_id": 0}).to_list(1000)
+    topic_ids = [t["id"] for t in topics]
+    
+    await db.subtopics.delete_many({"topic_id": {"$in": topic_ids}})
+    await db.topics.delete_many({"subject_id": subject_id})
+    result = await db.subjects.delete_one({"id": subject_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return {"message": "Subject deleted successfully"}
+
+# ============ Admin - Topic Management ============
+
+@api_router.get("/admin/topics")
+async def list_topics(subject_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"subject_id": subject_id} if subject_id else {}
+    topics = await db.topics.find(query, {"_id": 0}).to_list(1000)
+    return topics
+
+@api_router.post("/admin/topics")
+async def create_topic(topic_data: TopicCreate, admin: User = Depends(get_current_admin)):
+    # Verify subject exists
+    subject = await db.subjects.find_one({"id": topic_data.subject_id}, {"_id": 0})
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    topic = Topic(**topic_data.model_dump())
+    await db.topics.insert_one(topic.model_dump())
+    return topic
+
+@api_router.put("/admin/topics/{topic_id}")
+async def update_topic(topic_id: str, topic_data: TopicCreate, admin: User = Depends(get_current_admin)):
+    result = await db.topics.update_one(
+        {"id": topic_id},
+        {"$set": topic_data.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return {"message": "Topic updated successfully"}
+
+@api_router.delete("/admin/topics/{topic_id}")
+async def delete_topic(topic_id: str, admin: User = Depends(get_current_admin)):
+    # Also delete related subtopics
+    await db.subtopics.delete_many({"topic_id": topic_id})
+    result = await db.topics.delete_one({"id": topic_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return {"message": "Topic deleted successfully"}
+
+# ============ Admin - Subtopic Management ============
+
+@api_router.get("/admin/subtopics")
+async def list_subtopics(topic_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"topic_id": topic_id} if topic_id else {}
+    subtopics = await db.subtopics.find(query, {"_id": 0}).to_list(1000)
+    return subtopics
+
+@api_router.post("/admin/subtopics")
+async def create_subtopic(subtopic_data: SubtopicCreate, admin: User = Depends(get_current_admin)):
+    # Verify topic exists
+    topic = await db.topics.find_one({"id": subtopic_data.topic_id}, {"_id": 0})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    subtopic = Subtopic(**subtopic_data.model_dump())
+    await db.subtopics.insert_one(subtopic.model_dump())
+    return subtopic
+
+@api_router.put("/admin/subtopics/{subtopic_id}")
+async def update_subtopic(subtopic_id: str, subtopic_data: SubtopicCreate, admin: User = Depends(get_current_admin)):
+    result = await db.subtopics.update_one(
+        {"id": subtopic_id},
+        {"$set": subtopic_data.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Subtopic not found")
+    return {"message": "Subtopic updated successfully"}
+
+@api_router.delete("/admin/subtopics/{subtopic_id}")
+async def delete_subtopic(subtopic_id: str, admin: User = Depends(get_current_admin)):
+    result = await db.subtopics.delete_one({"id": subtopic_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Subtopic not found")
+    return {"message": "Subtopic deleted successfully"}
+
+# ============ Admin - PDF Knowledge Base ============
+
+@api_router.post("/admin/subtopics/{subtopic_id}/upload-pdf")
+async def upload_pdf(subtopic_id: str, file: UploadFile = File(...), admin: User = Depends(get_current_admin)):
+    # Verify subtopic exists
+    subtopic = await db.subtopics.find_one({"id": subtopic_id}, {"_id": 0})
+    if not subtopic:
+        raise HTTPException(status_code=404, detail="Subtopic not found")
+    
+    # Validate file type
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    
+    # Save PDF file
+    file_id = str(uuid.uuid4())
+    file_extension = ".pdf"
+    filename = f"{file_id}{file_extension}"
+    filepath = UPLOAD_DIR / filename
+    
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+    
+    # Update subtopic with new file
+    await db.subtopics.update_one(
+        {"id": subtopic_id},
+        {"$push": {"knowledge_base_files": filename}}
+    )
+    
+    return {
+        "message": "PDF uploaded successfully",
+        "filename": file.filename,
+        "file_id": filename
+    }
+
+@api_router.delete("/admin/subtopics/{subtopic_id}/pdf/{filename}")
+async def delete_pdf(subtopic_id: str, filename: str, admin: User = Depends(get_current_admin)):
+    # Remove from subtopic
+    await db.subtopics.update_one(
+        {"id": subtopic_id},
+        {"$pull": {"knowledge_base_files": filename}}
+    )
+    
+    # Delete file
+    filepath = UPLOAD_DIR / filename
+    if filepath.exists():
+        filepath.unlink()
+    
+    return {"message": "PDF deleted successfully"}
+
 # ============ Quiz Generation ============
 
 @api_router.post("/quiz/generate")
 async def generate_quiz(request: QuizRequest, current_user: User = Depends(get_current_user)):
     try:
+        # Try to find subtopic with knowledge base
+        context_text = ""
+        if request.subtopic:
+            subtopic = await db.subtopics.find_one(
+                {"name": request.subtopic, "knowledge_base_files": {"$exists": True, "$ne": []}},
+                {"_id": 0}
+            )
+            
+            if subtopic and subtopic.get("knowledge_base_files"):
+                # Extract text from PDFs
+                for pdf_file in subtopic["knowledge_base_files"][:3]:  # Use up to 3 PDFs
+                    filepath = UPLOAD_DIR / pdf_file
+                    if filepath.exists():
+                        with open(filepath, "rb") as f:
+                            pdf_content = f.read()
+                            extracted_text = extract_text_from_pdf(pdf_content)
+                            if extracted_text:
+                                context_text += extracted_text[:3000] + "\n\n"  # Limit per PDF
+        
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"quiz_{uuid.uuid4()}",
             system_message="You are an expert educator creating quiz questions. Generate questions in valid JSON format only."
         ).with_model("gemini", "gemini-3-pro-preview")
+        
+        context_instruction = ""
+        if context_text:
+            context_instruction = f"\n\nUSE THIS KNOWLEDGE BASE CONTEXT:\n{context_text[:4000]}\n\nGenerate questions strictly based on this context.\n"
         
         prompt = f"""
 Create {request.num_questions} quiz questions for:
@@ -198,7 +447,7 @@ Subject: {request.subject}
 Topic: {request.topic}
 {f'Subtopic: {request.subtopic}' if request.subtopic else ''}
 Difficulty: {request.difficulty}
-
+{context_instruction}
 For each question, include:
 1. question text
 2. type ("mcq" or "alphanumeric")
