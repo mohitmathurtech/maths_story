@@ -144,7 +144,9 @@ export default function AdminPanel({ user, onLogout }) {
 
     setLoading(true);
     try {
-      if (type === "subject") {
+      if (type === "grade") {
+        await api.delete(`/admin/grades/${id}`);
+      } else if (type === "subject") {
         await api.delete(`/admin/subjects/${id}`);
       } else if (type === "topic") {
         await api.delete(`/admin/topics/${id}`);
