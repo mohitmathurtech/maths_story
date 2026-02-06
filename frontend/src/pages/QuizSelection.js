@@ -105,20 +105,48 @@ export default function QuizSelection({ user, onLogout }) {
           <div className="bg-card rounded-2xl border border-border shadow-lg p-8">
             <form onSubmit={handleGenerate} className="space-y-6" data-testid="quiz-form">
               <div className="space-y-2">
+                <Label htmlFor="grade" className="text-base font-medium">
+                  Grade Level
+                </Label>
+                <select
+                  id="grade"
+                  value={formData.grade}
+                  onChange={(e) =>
+                    setFormData({ ...formData, grade: e.target.value })
+                  }
+                  className="w-full h-12 rounded-lg border-2 border-input bg-background px-4 text-base focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
+                  data-testid="grade-select"
+                >
+                  <option value="">Select Grade (Optional)</option>
+                  {grades.map((grade) => (
+                    <option key={grade.id} value={grade.name}>
+                      {grade.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="subject" className="text-base font-medium">
                   Subject *
                 </Label>
-                <Input
+                <select
                   id="subject"
-                  placeholder="e.g., Mathematics, Physics, Computer Science"
                   value={formData.subject}
                   onChange={(e) =>
                     setFormData({ ...formData, subject: e.target.value })
                   }
-                  className="h-12 rounded-lg border-2"
+                  className="w-full h-12 rounded-lg border-2 border-input bg-background px-4 text-base focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
                   required
-                  data-testid="subject-input"
-                />
+                  data-testid="subject-select"
+                >
+                  <option value="">Select Subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.name}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
