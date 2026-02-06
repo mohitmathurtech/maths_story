@@ -281,6 +281,70 @@ export default function AdminPanel({ user, onLogout }) {
           </button>
         </div>
 
+        {/* Grades Tab */}
+        {activeTab === "grades" && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-serif text-primary">Manage Grade Levels</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Control what grades appear in quiz creation dropdown
+                </p>
+              </div>
+              <Button
+                onClick={() => openModal("grade")}
+                className="bg-accent text-white rounded-full"
+                data-testid="add-grade-btn"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Grade
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {grades.map((grade) => (
+                <motion.div
+                  key={grade.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-border rounded-xl p-6 hover:shadow-md transition-shadow"
+                  data-testid={`grade-${grade.id}`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-primary">{grade.name}</h3>
+                    <span className="text-xs text-muted-foreground">Order: {grade.order}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openModal("grade", grade)}
+                      data-testid={`edit-grade-${grade.id}`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete("grade", grade.id)}
+                      className="text-destructive"
+                      data-testid={`delete-grade-${grade.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {grades.length === 0 && !loading && (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No grades added yet. Click "Add Grade" to create one.</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Subjects Tab */}
         {activeTab === "subjects" && (
           <div>
