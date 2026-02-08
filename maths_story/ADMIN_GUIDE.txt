@@ -1,0 +1,564 @@
+================================================================================
+          FOCUS LEARN - ADMIN CONTENT MANAGEMENT GUIDE
+================================================================================
+
+This guide explains how to use the new admin panel to manage subjects, topics,
+subtopics, and upload PDFs as knowledge base for AI-powered question generation.
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Overview of New Features
+2. Getting Admin Access
+3. Managing Subjects
+4. Managing Topics
+5. Managing Subtopics
+6. PDF Knowledge Base System
+7. How AI Uses PDFs for Question Generation
+8. API Reference for Developers
+9. Best Practices
+10. Troubleshooting
+
+================================================================================
+1. OVERVIEW OF NEW FEATURES
+================================================================================
+
+**What's New:**
+✓ Admin role system with role-based access control
+✓ Dynamic subject/topic/subtopic management (CRUD operations)
+✓ PDF upload system for knowledge base
+✓ AI-powered question generation using PDF content
+✓ Admin panel UI for easy content management
+
+**How It Works:**
+1. Admin creates Subject (e.g., "Mathematics")
+2. Admin creates Topics under Subject (e.g., "Linear Algebra")
+3. Admin creates Subtopics under Topic (e.g., "Eigenvalues")
+4. Admin uploads PDF files to Subtopics as knowledge base
+5. When users generate quizzes, AI reads PDF content and creates questions
+
+================================================================================
+2. GETTING ADMIN ACCESS
+================================================================================
+
+Step 1: Create a Regular User Account
+--------------------------------------
+Sign up through the web interface or use the API:
+- Visit: https://your-domain.com/auth
+- Create account with email and password
+
+Step 2: Promote User to Admin
+------------------------------
+Run the admin promotion script on the server:
+
+cd /app/backend
+python make_admin.py <user_email>
+
+Example:
+python make_admin.py admin@example.com
+
+Output:
+✅ User 'admin@example.com' has been promoted to admin!
+   Name: Admin User
+   User ID: abc123...
+
+Step 3: Login and Access Admin Panel
+-------------------------------------
+1. Login with your admin account
+2. Go to Dashboard
+3. Click on "Admin Panel" card (purple gradient)
+4. You'll see three tabs: Subjects, Topics, Subtopics & PDFs
+
+================================================================================
+3. MANAGING SUBJECTS
+================================================================================
+
+What is a Subject?
+------------------
+Top-level category (e.g., Mathematics, Physics, Computer Science)
+
+Creating a Subject:
+-------------------
+1. Go to Admin Panel → Subjects tab
+2. Click "Add Subject" button
+3. Fill in:
+   - Name: Required (e.g., "Mathematics")
+   - Description: Optional (e.g., "Core mathematics topics")
+4. Click "Save"
+
+Editing a Subject:
+------------------
+1. Find the subject card
+2. Click the Edit (pencil) icon
+3. Modify fields
+4. Click "Save"
+
+Deleting a Subject:
+-------------------
+⚠️ WARNING: This will also delete all Topics and Subtopics under it!
+1. Find the subject card
+2. Click the Delete (trash) icon
+3. Confirm deletion
+
+API Endpoints:
+--------------
+GET    /api/admin/subjects          - List all subjects
+POST   /api/admin/subjects          - Create subject
+PUT    /api/admin/subjects/{id}     - Update subject
+DELETE /api/admin/subjects/{id}     - Delete subject
+
+Example (Create):
+curl -X POST https://your-api.com/api/admin/subjects \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Physics",
+    "description": "Physics topics for all levels"
+  }'
+
+================================================================================
+4. MANAGING TOPICS
+================================================================================
+
+What is a Topic?
+----------------
+Second-level category under a Subject (e.g., "Linear Algebra" under "Mathematics")
+
+Creating a Topic:
+-----------------
+1. Go to Admin Panel → Topics tab
+2. Select a Subject from dropdown (required)
+3. Click "Add Topic" button
+4. Fill in:
+   - Name: Required (e.g., "Linear Algebra")
+   - Description: Optional
+5. Click "Save"
+
+Note: You must select a subject before you can add topics!
+
+Editing a Topic:
+----------------
+1. Select subject from dropdown (optional filter)
+2. Find the topic card
+3. Click Edit icon
+4. Modify fields
+5. Click "Save"
+
+Deleting a Topic:
+-----------------
+⚠️ WARNING: This will also delete all Subtopics under it!
+1. Find the topic card
+2. Click Delete icon
+3. Confirm deletion
+
+API Endpoints:
+--------------
+GET    /api/admin/topics                      - List all topics
+GET    /api/admin/topics?subject_id={id}      - Filter by subject
+POST   /api/admin/topics                      - Create topic
+PUT    /api/admin/topics/{id}                 - Update topic
+DELETE /api/admin/topics/{id}                 - Delete topic
+
+Example (Create):
+curl -X POST https://your-api.com/api/admin/topics \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject_id": "abc123...",
+    "name": "Quantum Mechanics",
+    "description": "Introduction to quantum physics"
+  }'
+
+================================================================================
+5. MANAGING SUBTOPICS
+================================================================================
+
+What is a Subtopic?
+-------------------
+Third-level category under a Topic (e.g., "Eigenvalues" under "Linear Algebra")
+This is where you attach PDF knowledge base files!
+
+Creating a Subtopic:
+--------------------
+1. Go to Admin Panel → Subtopics & PDFs tab
+2. Select a Topic from dropdown (required)
+3. Click "Add Subtopic" button
+4. Fill in:
+   - Name: Required (e.g., "Eigenvalues and Eigenvectors")
+   - Description: Optional
+5. Click "Save"
+
+Editing a Subtopic:
+-------------------
+1. Select topic from dropdown (optional filter)
+2. Find the subtopic card
+3. Click Edit icon
+4. Modify fields
+5. Click "Save"
+
+Deleting a Subtopic:
+--------------------
+⚠️ WARNING: This will also delete all uploaded PDFs!
+1. Find the subtopic card
+2. Click Delete icon
+3. Confirm deletion
+
+API Endpoints:
+--------------
+GET    /api/admin/subtopics                    - List all subtopics
+GET    /api/admin/subtopics?topic_id={id}      - Filter by topic
+POST   /api/admin/subtopics                    - Create subtopic
+PUT    /api/admin/subtopics/{id}               - Update subtopic
+DELETE /api/admin/subtopics/{id}               - Delete subtopic
+
+Example (Create):
+curl -X POST https://your-api.com/api/admin/subtopics \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic_id": "xyz789...",
+    "name": "Wave Functions",
+    "description": "Understanding quantum wave functions"
+  }'
+
+================================================================================
+6. PDF KNOWLEDGE BASE SYSTEM
+================================================================================
+
+What is the Knowledge Base?
+----------------------------
+PDF files you upload that contain learning material. The AI reads these PDFs
+and generates questions based on their content!
+
+Uploading a PDF:
+----------------
+1. Go to Admin Panel → Subtopics & PDFs tab
+2. Find the subtopic where you want to add knowledge
+3. In the "Knowledge Base PDFs" section:
+   - Click "Choose File" and select a PDF
+   - Click "Upload" button
+4. PDF will appear in the list below
+
+Supported File Format:
+----------------------
+- Only PDF files (.pdf extension)
+- Recommended size: Under 10MB per file
+- You can upload multiple PDFs per subtopic
+
+Viewing Uploaded PDFs:
+----------------------
+Each subtopic card shows:
+- List of uploaded PDF filenames
+- Delete button (X) for each PDF
+
+Deleting a PDF:
+---------------
+1. Find the subtopic card
+2. Locate the PDF in the list
+3. Click the X button next to the filename
+4. Confirm deletion
+
+Where are PDFs stored?
+----------------------
+PDFs are stored in: /app/backend/uploads/pdfs/
+Each file is renamed with a unique ID for security
+
+API Endpoints:
+--------------
+POST   /api/admin/subtopics/{id}/upload-pdf    - Upload PDF
+DELETE /api/admin/subtopics/{id}/pdf/{filename} - Delete PDF
+
+Example (Upload):
+curl -X POST https://your-api.com/api/admin/subtopics/{subtopic_id}/upload-pdf \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/document.pdf"
+
+================================================================================
+7. HOW AI USES PDFs FOR QUESTION GENERATION
+================================================================================
+
+The Magic Behind the Scenes:
+-----------------------------
+When a user generates a quiz for a subtopic that has PDF knowledge base:
+
+1. System checks if subtopic has any PDFs attached
+2. If PDFs exist, extracts text content from up to 3 PDFs
+3. Sends extracted text (up to 4000 characters) to Gemini 3 Pro AI
+4. AI generates questions BASED ON THE PDF CONTENT
+5. Questions are more accurate and relevant to your material!
+
+Example Workflow:
+-----------------
+Admin uploads: "linear_algebra_chapter3.pdf" to "Eigenvalues" subtopic
+User requests: Quiz on "Linear Algebra" → "Eigenvalues"
+AI receives: PDF content + instruction to generate questions
+AI creates: Questions specifically about eigenvalues from your PDF!
+
+Benefits:
+---------
+✓ Questions match your curriculum exactly
+✓ No generic questions - all contextual
+✓ Can upload textbooks, lecture notes, papers
+✓ Update content anytime by uploading new PDFs
+✓ Multiple PDFs = broader knowledge base
+
+Best Practices for PDF Content:
+--------------------------------
+✓ Use well-formatted PDFs with clear text
+✓ Include definitions, examples, and explanations
+✓ Avoid image-only PDFs (text must be extractable)
+✓ Break large topics into multiple subtopics
+✓ Upload relevant chapters, not entire textbooks
+✓ Update PDFs when content changes
+
+================================================================================
+8. API REFERENCE FOR DEVELOPERS
+================================================================================
+
+Authentication:
+---------------
+All admin endpoints require:
+- Valid JWT token in Authorization header
+- User role must be "admin"
+
+Header format:
+Authorization: Bearer <your_jwt_token>
+
+Complete API Endpoints:
+------------------------
+
+# Subjects
+GET    /api/admin/subjects
+POST   /api/admin/subjects
+PUT    /api/admin/subjects/{subject_id}
+DELETE /api/admin/subjects/{subject_id}
+
+# Topics
+GET    /api/admin/topics
+GET    /api/admin/topics?subject_id={id}
+POST   /api/admin/topics
+PUT    /api/admin/topics/{topic_id}
+DELETE /api/admin/topics/{topic_id}
+
+# Subtopics
+GET    /api/admin/subtopics
+GET    /api/admin/subtopics?topic_id={id}
+POST   /api/admin/subtopics
+PUT    /api/admin/subtopics/{subtopic_id}
+DELETE /api/admin/subtopics/{subtopic_id}
+
+# PDF Management
+POST   /api/admin/subtopics/{subtopic_id}/upload-pdf
+DELETE /api/admin/subtopics/{subtopic_id}/pdf/{filename}
+
+Request/Response Examples:
+--------------------------
+
+Create Subject:
+POST /api/admin/subjects
+{
+  "name": "Computer Science",
+  "description": "CS topics",
+  "icon": "💻"
+}
+
+Response:
+{
+  "id": "uuid-here",
+  "name": "Computer Science",
+  "description": "CS topics",
+  "icon": "💻",
+  "created_at": "2026-01-06T12:00:00Z"
+}
+
+Create Topic:
+POST /api/admin/topics
+{
+  "subject_id": "subject-uuid",
+  "name": "Data Structures",
+  "description": "Arrays, trees, graphs"
+}
+
+Create Subtopic:
+POST /api/admin/subtopics
+{
+  "topic_id": "topic-uuid",
+  "name": "Binary Trees",
+  "description": "Tree data structure basics"
+}
+
+Upload PDF:
+POST /api/admin/subtopics/{subtopic_id}/upload-pdf
+Content-Type: multipart/form-data
+Body: file = <pdf_file>
+
+Response:
+{
+  "message": "PDF uploaded successfully",
+  "filename": "binary_trees.pdf",
+  "file_id": "unique-file-id.pdf"
+}
+
+================================================================================
+9. BEST PRACTICES
+================================================================================
+
+Content Organization:
+---------------------
+✓ Create logical hierarchy: Subject → Topic → Subtopic
+✓ Keep subject names broad (e.g., "Mathematics" not "Grade 10 Math")
+✓ Make topics specific (e.g., "Linear Algebra" not "Algebra")
+✓ Use descriptive subtopic names (e.g., "Eigenvalues and Eigenvectors")
+
+PDF Management:
+---------------
+✓ Upload high-quality, text-based PDFs
+✓ Use descriptive filenames before uploading
+✓ Test quiz generation after uploading PDFs
+✓ Remove outdated PDFs when updating content
+✓ Keep PDFs focused on specific subtopics
+✓ Avoid very large files (> 10MB)
+
+Admin Security:
+---------------
+✓ Only promote trusted users to admin
+✓ Use strong passwords for admin accounts
+✓ Regularly audit admin actions
+✓ Backup database before bulk deletions
+✓ Keep admin credentials secure
+
+User Experience:
+----------------
+✓ Add descriptions to help users choose topics
+✓ Organize content logically
+✓ Update content regularly
+✓ Test quiz generation quality
+✓ Remove irrelevant or outdated topics
+
+================================================================================
+10. TROUBLESHOOTING
+================================================================================
+
+Issue: "Admin access required" error
+-------------------------------------
+Solution:
+1. Verify user has admin role:
+   - Check MongoDB: db.users.find({email: "user@example.com"})
+   - Should show: "role": "admin"
+2. Run make_admin.py script again:
+   python make_admin.py user@example.com
+3. Logout and login again to refresh token
+
+Issue: PDF upload fails
+------------------------
+Solution:
+1. Check file format - must be .pdf
+2. Check file size - keep under 10MB
+3. Verify disk space: df -h
+4. Check backend logs: tail -f /var/log/supervisor/backend.err.log
+5. Ensure uploads directory exists: ls -la /app/backend/uploads/pdfs
+
+Issue: AI not using PDF content
+--------------------------------
+Solution:
+1. Verify PDFs are uploaded to correct subtopic
+2. Check if user is selecting exact subtopic name in quiz
+3. View backend logs during quiz generation
+4. Ensure PDF contains extractable text (not just images)
+5. Try re-uploading PDF
+
+Issue: Cannot create topic without subject
+-------------------------------------------
+Solution:
+1. Go to Subjects tab first
+2. Create at least one subject
+3. Go back to Topics tab
+4. Select subject from dropdown
+5. Now "Add Topic" button will be enabled
+
+Issue: Deleted subject/topic but content still shows
+-----------------------------------------------------
+Solution:
+1. Hard refresh browser: Ctrl+Shift+R
+2. Clear browser cache
+3. Logout and login again
+4. Check if deletion was successful in database
+
+Issue: PDF extraction returns empty text
+-----------------------------------------
+Solution:
+1. PDF might be image-based or scanned
+2. Use OCR tool to convert to text-based PDF
+3. Try re-saving PDF with "text" export option
+4. Use PDF validators to check file integrity
+
+Database Issues:
+----------------
+To check database content:
+mongo
+use focus_learn_prod
+db.subjects.find().pretty()
+db.topics.find().pretty()
+db.subtopics.find().pretty()
+
+To reset admin content (caution!):
+db.subjects.deleteMany({})
+db.topics.deleteMany({})
+db.subtopics.deleteMany({})
+
+Backend Logs:
+-------------
+Check backend errors:
+tail -f /var/log/supervisor/backend.err.log
+
+Check backend output:
+tail -f /var/log/supervisor/backend.out.log
+
+Restart backend:
+sudo supervisorctl restart backend
+
+================================================================================
+QUICK REFERENCE CARD
+================================================================================
+
+Make User Admin:
+python /app/backend/make_admin.py user@example.com
+
+Access Admin Panel:
+https://your-domain.com/admin
+
+Content Hierarchy:
+Subject → Topic → Subtopic → PDFs
+
+Upload Location:
+/app/backend/uploads/pdfs/
+
+Key Features:
+✓ Dynamic content management
+✓ PDF knowledge base
+✓ AI-powered question generation
+✓ Role-based access control
+
+Admin APIs:
+/api/admin/subjects
+/api/admin/topics
+/api/admin/subtopics
+/api/admin/subtopics/{id}/upload-pdf
+
+Required Permissions:
+- Admin role in database
+- Valid JWT token
+- "admin" value in user.role field
+
+================================================================================
+                            END OF GUIDE
+================================================================================
+
+Version: 1.0
+Last Updated: January 2026
+Application: Focus Learn - Quiz-Based Learning Platform
+
+For technical support, refer to the main deployment guide (how_to_run.txt)
+or contact your development team.
+
+================================================================================

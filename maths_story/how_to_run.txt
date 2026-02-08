@@ -1,0 +1,578 @@
+================================================================================
+                    FOCUS LEARN - PRODUCTION DEPLOYMENT GUIDE
+================================================================================
+
+This guide provides step-by-step instructions to deploy and run the Focus Learn
+quiz-based learning platform in a production environment.
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Prerequisites
+2. Environment Setup
+3. Database Configuration
+4. Backend Setup
+5. Frontend Setup
+6. API Keys & Credentials
+7. Running the Application
+8. Testing the Deployment
+9. Troubleshooting
+10. Production Considerations
+
+================================================================================
+1. PREREQUISITES
+================================================================================
+
+Before starting, ensure you have:
+
+✓ Node.js v16+ and npm/yarn installed
+✓ Python 3.11+ installed
+✓ MongoDB installed and running (local or cloud like MongoDB Atlas)
+✓ Git installed
+✓ Domain name (optional, for production)
+✓ SSL certificate (optional, for HTTPS)
+
+================================================================================
+2. ENVIRONMENT SETUP
+================================================================================
+
+Step 1: Clone or copy the application to your server
+-------------------------------------------------------
+cd /path/to/your/deployment
+# If using git:
+# git clone <your-repo-url>
+# cd focus-learn
+
+Step 2: Verify directory structure
+-----------------------------------
+Your project should have:
+/app/
+├── backend/
+│   ├── server.py
+│   ├── requirements.txt
+│   └── .env
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── .env
+└── how_to_run.txt (this file)
+
+================================================================================
+3. DATABASE CONFIGURATION
+================================================================================
+
+Option A: Local MongoDB
+-----------------------
+1. Install MongoDB:
+   # Ubuntu/Debian
+   sudo apt-get install mongodb
+
+   # macOS
+   brew install mongodb-community
+
+2. Start MongoDB service:
+   # Ubuntu/Debian
+   sudo systemctl start mongodb
+   sudo systemctl enable mongodb
+
+   # macOS
+   brew services start mongodb-community
+
+3. Verify MongoDB is running:
+   mongo --eval "db.adminCommand('ping')"
+
+Option B: MongoDB Atlas (Cloud)
+--------------------------------
+1. Create account at https://www.mongodb.com/cloud/atlas
+2. Create a new cluster (free tier available)
+3. Create a database user with read/write permissions
+4. Whitelist your server IP address or use 0.0.0.0/0 for any IP
+5. Get your connection string:
+   mongodb+srv://<username>:<password>@cluster.mongodb.net/<dbname>
+
+================================================================================
+4. BACKEND SETUP
+================================================================================
+
+Step 1: Navigate to backend directory
+--------------------------------------
+cd /app/backend
+
+Step 2: Create Python virtual environment
+------------------------------------------
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+Step 3: Install Python dependencies
+------------------------------------
+pip install --upgrade pip
+pip install -r requirements.txt
+
+Note: If emergentintegrations installation fails, use:
+pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+
+Step 4: Configure backend environment variables
+------------------------------------------------
+Create/edit the .env file in /app/backend/.env:
+
+MONGO_URL="mongodb://localhost:27017"
+# OR for MongoDB Atlas:
+# MONGO_URL="mongodb+srv://<username>:<password>@cluster.mongodb.net/"
+
+DB_NAME="focus_learn_prod"
+CORS_ORIGINS="*"
+# For production, specify your frontend domain:
+# CORS_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+
+JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+JWT_ALGORITHM="HS256"
+
+# Gemini 3 Pro API Key (Choose one):
+# Option 1: Use Emergent LLM Key (Universal Key)
+EMERGENT_LLM_KEY=sk-emergent-b7a434720541a586b2
+
+# Option 2: Use your own Google API Key
+# EMERGENT_LLM_KEY=your-google-api-key-here
+
+# Optional: Google OAuth (if implementing)
+EMERGENT_GOOGLE_AUTH_CLIENT_ID=placeholder
+
+IMPORTANT SECURITY NOTES:
+- Change JWT_SECRET to a strong random string
+- Never commit .env file to version control
+- Restrict CORS_ORIGINS to your actual domain in production
+
+Step 5: Test backend server
+----------------------------
+# Make sure you're in /app/backend with venv activated
+uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+
+# Test in another terminal:
+curl http://localhost:8001/api/
+# Expected output: {"message":"Focus Learn API","status":"running"}
+
+Step 6: Stop test server (Ctrl+C)
+
+================================================================================
+5. FRONTEND SETUP
+================================================================================
+
+Step 1: Navigate to frontend directory
+---------------------------------------
+cd /app/frontend
+
+Step 2: Install Node.js dependencies
+-------------------------------------
+# Using yarn (recommended):
+yarn install
+
+# OR using npm:
+npm install
+
+Step 3: Configure frontend environment variables
+-------------------------------------------------
+Create/edit the .env file in /app/frontend/.env:
+
+# Development:
+REACT_APP_BACKEND_URL=http://localhost:8001
+
+# Production (update with your actual backend URL):
+# REACT_APP_BACKEND_URL=https://api.yourdomain.com
+
+WDS_SOCKET_PORT=443
+ENABLE_HEALTH_CHECK=false
+
+Step 4: Build frontend for production
+--------------------------------------
+# Using yarn:
+yarn build
+
+# OR using npm:
+npm run build
+
+This creates an optimized production build in /app/frontend/build/
+
+Step 5: Test frontend locally (optional)
+-----------------------------------------
+# Using yarn:
+yarn start
+
+# OR using npm:
+npm start
+
+Visit http://localhost:3000 to verify the app loads
+
+================================================================================
+6. API KEYS & CREDENTIALS
+================================================================================
+
+Gemini 3 Pro API Key Setup
+---------------------------
+You have two options:
+
+Option 1: Use Emergent LLM Key (Easiest)
+-----------------------------------------
+The key is already configured:
+EMERGENT_LLM_KEY=sk-emergent-b7a434720541a586b2
+
+This universal key works for:
+- Gemini 3 Pro (text generation)
+- OpenAI GPT models
+- Claude models
+
+To check/top up balance:
+1. Login to your Emergent account
+2. Go to Profile → Universal Key → Add Balance
+
+Option 2: Use Your Own Google API Key
+--------------------------------------
+1. Go to https://makersuite.google.com/app/apikey
+2. Create a new API key
+3. Enable "Generative Language API"
+4. Replace EMERGENT_LLM_KEY in backend/.env with your key
+
+JWT Secret Key
+--------------
+CRITICAL: Change the JWT_SECRET in backend/.env to a strong random string:
+
+# Generate a secure random key:
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Use this output as your JWT_SECRET
+
+================================================================================
+7. RUNNING THE APPLICATION
+================================================================================
+
+Production Deployment Options
+------------------------------
+
+OPTION A: Using Process Managers (Recommended)
+-----------------------------------------------
+
+1. Install PM2 (for Node.js) and Supervisor (for Python):
+   npm install -g pm2
+   sudo apt-get install supervisor  # Ubuntu/Debian
+
+2. Configure Supervisor for backend:
+   Create /etc/supervisor/conf.d/focuslearn-backend.conf:
+
+   [program:focuslearn-backend]
+   command=/app/backend/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001
+   directory=/app/backend
+   user=www-data
+   autostart=true
+   autorestart=true
+   stderr_logfile=/var/log/focuslearn-backend.err.log
+   stdout_logfile=/var/log/focuslearn-backend.out.log
+
+3. Reload Supervisor:
+   sudo supervisorctl reread
+   sudo supervisorctl update
+   sudo supervisorctl start focuslearn-backend
+
+4. Serve frontend with Nginx:
+   Create /etc/nginx/sites-available/focuslearn:
+
+   server {
+       listen 80;
+       server_name yourdomain.com www.yourdomain.com;
+       
+       root /app/frontend/build;
+       index index.html;
+       
+       # Frontend
+       location / {
+           try_files $uri $uri/ /index.html;
+       }
+       
+       # Backend API proxy
+       location /api {
+           proxy_pass http://localhost:8001;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+
+5. Enable the site:
+   sudo ln -s /etc/nginx/sites-available/focuslearn /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl reload nginx
+
+
+OPTION B: Using Docker (Alternative)
+-------------------------------------
+
+1. Create Dockerfile for backend (/app/backend/Dockerfile):
+
+   FROM python:3.11-slim
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install -r requirements.txt
+   COPY . .
+   CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
+
+2. Create Dockerfile for frontend (/app/frontend/Dockerfile):
+
+   FROM node:16-alpine as build
+   WORKDIR /app
+   COPY package.json yarn.lock ./
+   RUN yarn install
+   COPY . .
+   RUN yarn build
+   
+   FROM nginx:alpine
+   COPY --from=build /app/build /usr/share/nginx/html
+   EXPOSE 80
+   CMD ["nginx", "-g", "daemon off;"]
+
+3. Create docker-compose.yml in /app/:
+
+   version: '3.8'
+   services:
+     mongodb:
+       image: mongo:latest
+       ports:
+         - "27017:27017"
+       volumes:
+         - mongodb_data:/data/db
+     
+     backend:
+       build: ./backend
+       ports:
+         - "8001:8001"
+       environment:
+         - MONGO_URL=mongodb://mongodb:27017
+       depends_on:
+         - mongodb
+     
+     frontend:
+       build: ./frontend
+       ports:
+         - "80:80"
+       depends_on:
+         - backend
+   
+   volumes:
+     mongodb_data:
+
+4. Run with Docker Compose:
+   docker-compose up -d
+
+
+OPTION C: Simple Manual Start (Development/Testing)
+----------------------------------------------------
+
+Terminal 1 - Backend:
+cd /app/backend
+source venv/bin/activate
+uvicorn server:app --host 0.0.0.0 --port 8001
+
+Terminal 2 - Frontend:
+cd /app/frontend
+yarn start
+# OR for production build:
+# serve -s build -l 3000
+
+================================================================================
+8. TESTING THE DEPLOYMENT
+================================================================================
+
+Step 1: Test Backend API
+-------------------------
+curl http://your-domain.com/api/
+# OR if local: curl http://localhost:8001/api/
+Expected: {"message":"Focus Learn API","status":"running"}
+
+Step 2: Test User Registration
+-------------------------------
+curl -X POST http://your-domain.com/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123","name":"Test User"}'
+
+Expected: JSON response with token and user data
+
+Step 3: Test AI Quiz Generation
+--------------------------------
+# First, get a token by logging in
+TOKEN="<token-from-signup-or-login>"
+
+curl -X POST http://your-domain.com/api/quiz/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "subject":"Mathematics",
+    "topic":"Algebra",
+    "difficulty":"easy",
+    "num_questions":3
+  }'
+
+Expected: JSON response with quiz ID and questions
+
+Step 4: Test Frontend
+---------------------
+Open browser and navigate to:
+http://your-domain.com (or http://localhost:3000)
+
+Verify:
+✓ Landing page loads with "Master Through Focus" heading
+✓ Can navigate to signup/login
+✓ Can create an account
+✓ Dashboard loads after login
+✓ Can generate a quiz
+✓ Quiz interface displays questions
+✓ Can submit answers and see results
+
+================================================================================
+9. TROUBLESHOOTING
+================================================================================
+
+Issue: Backend won't start
+---------------------------
+Solution:
+1. Check if MongoDB is running:
+   sudo systemctl status mongodb
+2. Check backend logs:
+   tail -f /var/log/focuslearn-backend.err.log
+3. Verify Python dependencies:
+   pip list | grep emergentintegrations
+4. Test MongoDB connection:
+   python3 -c "from pymongo import MongoClient; client = MongoClient('mongodb://localhost:27017'); print(client.server_info())"
+
+Issue: Quiz generation fails
+-----------------------------
+Solution:
+1. Check EMERGENT_LLM_KEY in backend/.env
+2. Verify key balance (for Emergent key)
+3. Check backend logs for API errors
+4. Test Gemini API directly:
+   curl with Authorization header
+
+Issue: Frontend can't connect to backend
+-----------------------------------------
+Solution:
+1. Verify REACT_APP_BACKEND_URL in frontend/.env
+2. Check CORS settings in backend/.env
+3. Test backend API directly with curl
+4. Check browser console for CORS errors
+5. Ensure /api prefix is used in all backend routes
+
+Issue: Authentication not working
+----------------------------------
+Solution:
+1. Clear browser localStorage
+2. Verify JWT_SECRET is set in backend/.env
+3. Check token expiration (default: 7 days)
+4. Test login endpoint directly with curl
+
+Issue: MongoDB connection failed
+---------------------------------
+Solution:
+1. For local MongoDB:
+   sudo systemctl start mongodb
+2. For MongoDB Atlas:
+   - Verify IP whitelist
+   - Check username/password
+   - Ensure network access is configured
+3. Test connection string in MongoDB Compass
+
+================================================================================
+10. PRODUCTION CONSIDERATIONS
+================================================================================
+
+Security
+--------
+✓ Use HTTPS (SSL/TLS certificate)
+✓ Change JWT_SECRET to strong random value
+✓ Restrict CORS_ORIGINS to your domain only
+✓ Enable MongoDB authentication
+✓ Use environment variables for all secrets
+✓ Never commit .env files to git
+✓ Set up firewall rules (UFW/iptables)
+✓ Regular security updates
+
+Performance
+-----------
+✓ Enable gzip compression in Nginx
+✓ Set up CDN for static assets
+✓ Configure MongoDB indexes
+✓ Use connection pooling
+✓ Enable Redis caching (optional)
+✓ Monitor API response times
+
+Monitoring
+----------
+✓ Set up application logging
+✓ Use PM2 or Supervisor for process management
+✓ Monitor server resources (CPU, RAM, disk)
+✓ Set up alerts for downtime
+✓ Track API usage and errors
+✓ Monitor MongoDB performance
+
+Backups
+-------
+✓ Regular MongoDB backups (daily recommended)
+✓ Backup .env files securely
+✓ Version control your code (Git)
+✓ Document your deployment process
+
+Scaling
+-------
+✓ Use load balancer for multiple backend instances
+✓ MongoDB replica set for high availability
+✓ Separate database server from app server
+✓ Consider managed services (AWS, GCP, Azure)
+
+================================================================================
+QUICK START CHECKLIST
+================================================================================
+
+□ 1. Install prerequisites (Node.js, Python, MongoDB)
+□ 2. Set up MongoDB (local or Atlas)
+□ 3. Configure backend/.env (MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY)
+□ 4. Install backend dependencies: pip install -r requirements.txt
+□ 5. Configure frontend/.env (REACT_APP_BACKEND_URL)
+□ 6. Install frontend dependencies: yarn install
+□ 7. Build frontend: yarn build
+□ 8. Start backend: uvicorn server:app --host 0.0.0.0 --port 8001
+□ 9. Serve frontend (Nginx or yarn start)
+□ 10. Test the application in browser
+□ 11. Set up process managers (PM2, Supervisor)
+□ 12. Configure Nginx with SSL
+□ 13. Set up monitoring and backups
+
+================================================================================
+SUPPORT & RESOURCES
+================================================================================
+
+Documentation:
+- FastAPI: https://fastapi.tiangolo.com/
+- React: https://react.dev/
+- MongoDB: https://docs.mongodb.com/
+- Nginx: https://nginx.org/en/docs/
+
+API Keys:
+- Emergent LLM Key: Check your Emergent dashboard
+- Google Gemini: https://makersuite.google.com/
+
+Need Help?
+- Review backend logs: tail -f /var/log/focuslearn-backend.err.log
+- Check frontend console in browser DevTools
+- Test APIs with curl or Postman
+
+================================================================================
+                            END OF DEPLOYMENT GUIDE
+================================================================================
+
+Last Updated: January 2026
+Version: 1.0
+Application: Focus Learn - Quiz-Based Learning Platform
+
+For updates to this guide or additional support, refer to your project
+documentation or contact your development team.
+
+================================================================================
