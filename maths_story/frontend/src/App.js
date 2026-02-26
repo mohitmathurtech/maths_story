@@ -13,6 +13,9 @@ import Analytics from "@/pages/Analytics";
 import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
 import AdminPanel from "@/pages/AdminPanel";
+import QuizHistory from "@/pages/QuizHistory";
+import DailyChallenge from "@/pages/DailyChallenge";
+import SRSReview from "@/pages/SRSReview";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -131,6 +134,36 @@ function App() {
           element={
             isAuthenticated ? (
               <AdminPanel user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/auth" />
+            )
+          }
+        />
+        <Route
+          path="/quiz-history"
+          element={
+            isAuthenticated ? (
+              <QuizHistory user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/auth" />
+            )
+          }
+        />
+        <Route
+          path="/daily-challenge"
+          element={
+            isAuthenticated ? (
+              <DailyChallenge user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/auth" />
+            )
+          }
+        />
+        <Route
+          path="/srs-review"
+          element={
+            isAuthenticated ? (
+              <SRSReview user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/auth" />
             )

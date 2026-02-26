@@ -1,0 +1,20 @@
+{
+  "short_name": "Focus Learn",
+  "name": "Focus Learn — AI Quiz Platform",
+  "description": "AI-powered personalized quiz platform for students with spaced repetition, story mode, and gamification.",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc",
+  "orientation": "portrait-primary",
+  "categories": ["education", "games"],
+  "scope": "/",
+  "prefer_related_applications": false
+}

@@ -12,10 +12,15 @@ import {
   Medal,
   LogOut,
   Shield,
+  Calendar,
+  BookOpen,
+  History,
+  Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import api from "@/utils/api";
+import DarkModeToggle from "@/components/DarkModeToggle";
 
 export default function Dashboard({ user, onLogout }) {
   const navigate = useNavigate();
@@ -56,7 +61,7 @@ export default function Dashboard({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-white sticky top-0 z-10">
+      <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -79,6 +84,7 @@ export default function Dashboard({ user, onLogout }) {
               >
                 <LogOut className="w-4 h-4" />
               </Button>
+              <DarkModeToggle />
             </div>
           </div>
         </div>
@@ -160,12 +166,55 @@ export default function Dashboard({ user, onLogout }) {
               <motion.div
                 whileHover={{ scale: 1.02, y: -4 }}
                 onClick={() => navigate("/leaderboard")}
-                className="bg-card border-2 border-amber-200 rounded-xl p-8 cursor-pointer shadow-sm"
+                className="bg-card border-2 border-amber-200 dark:border-amber-800 rounded-xl p-8 cursor-pointer shadow-sm"
                 data-testid="leaderboard-card"
               >
                 <TrendingUp className="w-10 h-10 text-amber-600 mb-4" />
                 <h3 className="text-2xl font-serif text-primary mb-2">Leaderboard</h3>
                 <p className="text-muted-foreground">See how you rank globally</p>
+              </motion.div>
+            </div>
+
+            {/* New Feature Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -4 }}
+                onClick={() => navigate("/daily-challenge")}
+                className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-8 text-white cursor-pointer shadow-lg"
+              >
+                <Calendar className="w-10 h-10 mb-4" />
+                <h3 className="text-2xl font-serif mb-2">Daily Challenge</h3>
+                <p className="text-amber-100">Today's brain teaser — earn bonus XP!</p>
+                {stats?.srs_due > 0 && (
+                  <div className="mt-3 bg-white/20 rounded-full px-3 py-1 text-sm inline-block">
+                    🔥 {stats.srs_due} cards due for review
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, y: -4 }}
+                onClick={() => navigate("/srs-review")}
+                className="bg-card border-2 border-emerald-200 dark:border-emerald-800 rounded-xl p-8 cursor-pointer shadow-sm"
+              >
+                <BookOpen className="w-10 h-10 text-emerald-600 mb-4" />
+                <h3 className="text-2xl font-serif text-primary mb-2">SRS Review</h3>
+                <p className="text-muted-foreground">Strengthen weak areas with spaced repetition</p>
+                {stats?.srs_total > 0 && (
+                  <div className="mt-2 text-sm text-emerald-600 font-medium">
+                    {stats.srs_due || 0} due now • {stats.srs_total} total cards
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, y: -4 }}
+                onClick={() => navigate("/quiz-history")}
+                className="bg-card border-2 border-violet-200 dark:border-violet-800 rounded-xl p-8 cursor-pointer shadow-sm"
+              >
+                <History className="w-10 h-10 text-violet-600 mb-4" />
+                <h3 className="text-2xl font-serif text-primary mb-2">Quiz History</h3>
+                <p className="text-muted-foreground">Review all past quizzes and track your trend</p>
               </motion.div>
             </div>
 

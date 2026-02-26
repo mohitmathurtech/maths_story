@@ -16,8 +16,9 @@ TABLE OF CONTENTS
 6. API Keys & Credentials
 7. Running the Application
 8. Testing the Deployment
-9. Troubleshooting
-10. Production Considerations
+9. API Reference
+10. Troubleshooting
+11. Production Considerations
 
 ================================================================================
 1. PREREQUISITES
@@ -48,12 +49,49 @@ Step 2: Verify directory structure
 Your project should have:
 /app/
 ├── backend/
-│   ├── server.py
+│   ├── server.py           ← App init, middleware, router mount (~95 lines)
+│   ├── db.py               ← MongoDB connection
+│   ├── models.py           ← All Pydantic models
 │   ├── requirements.txt
-│   └── .env
+│   ├── .env
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── auth.py         ← JWT, password hashing, role guards
+│   │   └── pdf.py          ← PDF text extraction & chunking
+│   └── routes/
+│       ├── auth.py          ← Signup, login, Google OAuth
+│       ├── admin.py         ← Grades, subjects, topics, PDFs
+│       ├── quiz.py          ← Generate, submit, history, share
+│       ├── daily.py         ← Daily challenge + leaderboard
+│       ├── srs.py           ← Spaced Repetition System (Leitner)
+│       ├── analytics.py     ← Dashboard, leaderboard, achievements
+│       └── teacher.py       ← Teacher dashboard, class management
 ├── frontend/
 │   ├── src/
+│   │   ├── App.js           ← 16 routes
+│   │   ├── components/
+│   │   │   └── DarkModeToggle.js
+│   │   ├── utils/
+│   │   │   ├── api.js       ← Axios instance + auth interceptor
+│   │   │   └── sounds.js    ← Web Audio effects + confetti
+│   │   └── pages/
+│   │       ├── LandingPage.js
+│   │       ├── AuthPage.js
+│   │       ├── Dashboard.js
+│   │       ├── QuizSelection.js   ← Mode & story toggles
+│   │       ├── QuizInterface.js   ← Story context, hints
+│   │       ├── Results.js         ← Confetti, per-question review
+│   │       ├── QuizHistory.js     ← Score trend chart
+│   │       ├── DailyChallenge.js  ← Daily quiz page
+│   │       ├── SRSReview.js       ← Flashcard-style review
+│   │       ├── Analytics.js
+│   │       ├── Leaderboard.js
+│   │       ├── Profile.js         ← Tiered badges & milestones
+│   │       └── AdminPanel.js
 │   ├── public/
+│   │   ├── index.html       ← SW registration included
+│   │   ├── manifest.json    ← PWA manifest
+│   │   └── service-worker.js ← Offline caching
 │   ├── package.json
 │   └── .env
 └── how_to_run.txt (this file)
@@ -90,6 +128,20 @@ Option B: MongoDB Atlas (Cloud)
 4. Whitelist your server IP address or use 0.0.0.0/0 for any IP
 5. Get your connection string:
    mongodb+srv://<username>:<password>@cluster.mongodb.net/<dbname>
+
+MongoDB Collections (auto-created):
+-------------------------------------
+  users              – User accounts (name, email, password, role, points, etc.)
+  grades             – Grade levels
+  subjects           – Subject definitions
+  topics             – Topics per subject
+  subtopics          – Subtopics per topic
+  quiz_results       – Quiz submissions & scores
+  srs_cards          – Spaced repetition flashcards (Leitner buckets)
+  daily_challenges   – One per day, auto-generated
+  daily_submissions  – Per-user daily challenge results
+  classes            – Teacher-created classes
+  assignments        – Quiz assignments for classes
 
 ================================================================================
 4. BACKEND SETUP
@@ -128,15 +180,16 @@ CORS_ORIGINS="*"
 JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 JWT_ALGORITHM="HS256"
 
-# Gemini 3 Pro API Key (Choose one):
+# Gemini 2.0 Flash API Key (Choose one):
 # Option 1: Use Emergent LLM Key (Universal Key)
 EMERGENT_LLM_KEY=sk-emergent-b7a434720541a586b2
 
 # Option 2: Use your own Google API Key
 # EMERGENT_LLM_KEY=your-google-api-key-here
 
-# Optional: Google OAuth (if implementing)
-EMERGENT_GOOGLE_AUTH_CLIENT_ID=placeholder
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 IMPORTANT SECURITY NOTES:
 - Change JWT_SECRET to a strong random string
@@ -207,8 +260,8 @@ Visit http://localhost:3000 to verify the app loads
 6. API KEYS & CREDENTIALS
 ================================================================================
 
-Gemini 3 Pro API Key Setup
----------------------------
+Gemini 2.0 Flash API Key Setup
+-------------------------------
 You have two options:
 
 Option 1: Use Emergent LLM Key (Easiest)
@@ -217,7 +270,7 @@ The key is already configured:
 EMERGENT_LLM_KEY=sk-emergent-b7a434720541a586b2
 
 This universal key works for:
-- Gemini 3 Pro (text generation)
+- Gemini 2.0 Flash (text generation)
 - OpenAI GPT models
 - Claude models
 
@@ -240,6 +293,13 @@ CRITICAL: Change the JWT_SECRET in backend/.env to a strong random string:
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 
 # Use this output as your JWT_SECRET
+
+Google OAuth (Optional)
+------------------------
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Create OAuth 2.0 Client ID (Web application)
+3. Set authorized redirect URIs to your frontend URL
+4. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to backend/.env
 
 ================================================================================
 7. RUNNING THE APPLICATION
@@ -296,6 +356,12 @@ OPTION A: Using Process Managers (Recommended)
            proxy_set_header Host $host;
            proxy_cache_bypass $http_upgrade;
        }
+
+       # Service Worker
+       location /service-worker.js {
+           add_header Cache-Control "no-cache";
+           proxy_cache_bypass $http_pragma;
+       }
    }
 
 5. Enable the site:
@@ -318,7 +384,7 @@ OPTION B: Using Docker (Alternative)
 
 2. Create Dockerfile for frontend (/app/frontend/Dockerfile):
 
-   FROM node:16-alpine as build
+   FROM node:18-alpine as build
    WORKDIR /app
    COPY package.json yarn.lock ./
    RUN yarn install
@@ -408,12 +474,44 @@ curl -X POST http://your-domain.com/api/quiz/generate \
     "subject":"Mathematics",
     "topic":"Algebra",
     "difficulty":"easy",
-    "num_questions":3
+    "num_questions":3,
+    "mode":"timed",
+    "story_mode":false
   }'
 
 Expected: JSON response with quiz ID and questions
 
-Step 4: Test Frontend
+Step 4: Test Story Mode
+------------------------
+curl -X POST http://your-domain.com/api/quiz/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "subject":"Mathematics",
+    "topic":"Fractions",
+    "difficulty":"easy",
+    "num_questions":3,
+    "mode":"practice",
+    "story_mode":true
+  }'
+
+Expected: Questions with story_context fields and hints (practice mode)
+
+Step 5: Test Daily Challenge
+-----------------------------
+curl http://your-domain.com/api/daily/challenge \
+  -H "Authorization: Bearer $TOKEN"
+
+Expected: JSON with today's 5-question challenge
+
+Step 6: Test Achievements
+--------------------------
+curl http://your-domain.com/api/analytics/achievements \
+  -H "Authorization: Bearer $TOKEN"
+
+Expected: JSON with badges (tiered), milestones, and stats
+
+Step 7: Test Frontend
 ---------------------
 Open browser and navigate to:
 http://your-domain.com (or http://localhost:3000)
@@ -422,13 +520,88 @@ Verify:
 ✓ Landing page loads with "Master Through Focus" heading
 ✓ Can navigate to signup/login
 ✓ Can create an account
-✓ Dashboard loads after login
-✓ Can generate a quiz
-✓ Quiz interface displays questions
-✓ Can submit answers and see results
+✓ Dashboard loads after login with action cards
+✓ Dark mode toggle works in header
+✓ Can generate a quiz (with mode & story options)
+✓ Quiz interface displays questions (with story context if enabled)
+✓ Practice mode shows "Show Hint" button
+✓ Can submit answers and see results with confetti & sounds
+✓ Results page shows per-question review (expandable)
+✓ Share button works
+✓ Daily Challenge page loads and is playable
+✓ SRS Review page shows flashcards (if any in queue)
+✓ Quiz History shows score trend chart
+✓ Profile page shows tiered badges and milestones
+✓ PWA: App can be installed via browser "Add to Home Screen"
 
 ================================================================================
-9. TROUBLESHOOTING
+9. API REFERENCE
+================================================================================
+
+All endpoints are prefixed with /api/
+
+Auth
+-----
+  POST   /auth/signup            – Register new user
+  POST   /auth/login             – Login (returns JWT)
+  POST   /auth/google            – Google OAuth login
+
+Quiz
+-----
+  POST   /quiz/generate          – Generate quiz (params: subject, topic,
+                                    difficulty, num_questions, mode, story_mode)
+  POST   /quiz/submit            – Submit quiz answers (server-side validation)
+  GET    /quiz/history            – Quiz history (filter: subject, topic, page)
+  GET    /quiz/result/:id         – Detailed result (per-question breakdown)
+  GET    /quiz/share/:id          – Public shareable result card
+
+Daily Challenge
+----------------
+  GET    /daily/challenge         – Get today's challenge (5 questions)
+  POST   /daily/submit            – Submit daily challenge answers
+  GET    /daily/leaderboard       – Daily leaderboard
+
+Spaced Repetition (SRS)
+-------------------------
+  GET    /srs/review              – Get due flashcards (Leitner system)
+  POST   /srs/review/:card_id    – Submit review answer
+  GET    /srs/stats               – SRS stats (due, total, by bucket)
+
+Analytics
+----------
+  GET    /analytics/dashboard     – User dashboard stats
+  GET    /analytics/achievements  – Tiered badges (6) + milestones (7)
+  GET    /leaderboard             – Global leaderboard
+  GET    /leaderboard/topic/:s/:t – Topic-specific leaderboard
+  GET    /subjects/active         – Active subjects (public)
+
+Teacher Dashboard
+------------------
+  POST   /teacher/classes         – Create a class
+  GET    /teacher/classes         – List teacher's classes
+  POST   /teacher/classes/:id/invite    – Invite student by email
+  GET    /teacher/classes/:id/students  – Per-student analytics + weak topics
+  GET    /teacher/classes/:id/analytics – Class-level analytics
+  POST   /teacher/classes/:id/assign    – Assign a quiz to a class
+  GET    /teacher/assignments/:id       – List assignments for a class
+
+Admin
+------
+  POST   /admin/grades            – Create grade
+  GET    /admin/grades            – List grades
+  POST   /admin/subjects          – Create subject
+  POST   /admin/topics            – Create topic
+  POST   /admin/subtopics         – Create subtopic
+  POST   /admin/upload-pdf        – Upload PDF for a topic
+
+User Roles
+-----------
+  user     – Default role. Can take quizzes, view history, SRS, etc.
+  teacher  – Can manage classes, view student analytics, assign quizzes.
+  admin    – Full access: manage content, grades, subjects, topics, users.
+
+================================================================================
+10. TROUBLESHOOTING
 ================================================================================
 
 Issue: Backend won't start
@@ -480,8 +653,22 @@ Solution:
    - Ensure network access is configured
 3. Test connection string in MongoDB Compass
 
+Issue: Daily Challenge not generating
+--------------------------------------
+Solution:
+1. Daily challenges auto-generate on first request each day
+2. Requires at least 1 active subject with topics
+3. Check backend logs for LLM errors
+
+Issue: PWA not installing
+--------------------------
+Solution:
+1. Must be served over HTTPS (or localhost)
+2. Check public/manifest.json exists
+3. Check DevTools → Application → Service Workers
+
 ================================================================================
-10. PRODUCTION CONSIDERATIONS
+11. PRODUCTION CONSIDERATIONS
 ================================================================================
 
 Security
@@ -494,13 +681,15 @@ Security
 ✓ Never commit .env files to git
 ✓ Set up firewall rules (UFW/iptables)
 ✓ Regular security updates
+✓ Server-side answer validation (already implemented)
 
 Performance
 -----------
 ✓ Enable gzip compression in Nginx
 ✓ Set up CDN for static assets
-✓ Configure MongoDB indexes
+✓ Configure MongoDB indexes (auto-created on startup)
 ✓ Use connection pooling
+✓ PWA service worker caches static assets
 ✓ Enable Redis caching (optional)
 ✓ Monitor API response times
 
@@ -531,19 +720,21 @@ Scaling
 QUICK START CHECKLIST
 ================================================================================
 
-□ 1. Install prerequisites (Node.js, Python, MongoDB)
-□ 2. Set up MongoDB (local or Atlas)
-□ 3. Configure backend/.env (MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY)
-□ 4. Install backend dependencies: pip install -r requirements.txt
-□ 5. Configure frontend/.env (REACT_APP_BACKEND_URL)
-□ 6. Install frontend dependencies: yarn install
-□ 7. Build frontend: yarn build
-□ 8. Start backend: uvicorn server:app --host 0.0.0.0 --port 8001
-□ 9. Serve frontend (Nginx or yarn start)
-□ 10. Test the application in browser
-□ 11. Set up process managers (PM2, Supervisor)
-□ 12. Configure Nginx with SSL
-□ 13. Set up monitoring and backups
+□ 1.  Install prerequisites (Node.js, Python, MongoDB)
+□ 2.  Set up MongoDB (local or Atlas)
+□ 3.  Configure backend/.env (MONGO_URL, JWT_SECRET, EMERGENT_LLM_KEY)
+□ 4.  Create venv: python3 -m venv venv && source venv/bin/activate
+□ 5.  Install backend deps: pip install -r requirements.txt
+□ 6.  Configure frontend/.env (REACT_APP_BACKEND_URL)
+□ 7.  Install frontend deps: yarn install
+□ 8.  Build frontend: yarn build
+□ 9.  Start backend: uvicorn server:app --host 0.0.0.0 --port 8001
+□ 10. Serve frontend (Nginx or yarn start)
+□ 11. Test the application in browser
+□ 12. Create admin user via /api/auth/signup (then update role in DB)
+□ 13. Set up process managers (PM2, Supervisor)
+□ 14. Configure Nginx with SSL
+□ 15. Set up monitoring and backups
 
 ================================================================================
 SUPPORT & RESOURCES
@@ -558,21 +749,32 @@ Documentation:
 API Keys:
 - Emergent LLM Key: Check your Emergent dashboard
 - Google Gemini: https://makersuite.google.com/
+- Google OAuth: https://console.cloud.google.com/apis/credentials
 
 Need Help?
 - Review backend logs: tail -f /var/log/focuslearn-backend.err.log
 - Check frontend console in browser DevTools
 - Test APIs with curl or Postman
+- Check /api/ health endpoint
 
 ================================================================================
                             END OF DEPLOYMENT GUIDE
 ================================================================================
 
-Last Updated: January 2026
-Version: 1.0
-Application: Focus Learn - Quiz-Based Learning Platform
+Last Updated: February 2026
+Version: 2.0
+Application: Focus Learn - AI-Powered Quiz Platform
 
-For updates to this guide or additional support, refer to your project
-documentation or contact your development team.
+Features:
+- AI quiz generation (Gemini 2.0 Flash) with story mode
+- 3 quiz modes: Timed, Practice (with hints), Exam Prep
+- Spaced Repetition System (Leitner 5-bucket)
+- Daily Challenges with bonus XP
+- Tiered achievement badges (Bronze/Silver/Gold)
+- Teacher Dashboard (class management, student analytics)
+- Dark mode, sound effects, confetti animations
+- PWA support (installable, offline-capable)
+- Server-side answer validation
+- Google OAuth integration
 
 ================================================================================

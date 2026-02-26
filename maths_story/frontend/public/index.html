@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#4f46e5" />
     <meta
       name="description"
       content="Focus Learn - Quiz-based learning platform with cognitive metrics"
@@ -19,5 +19,14 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(r => console.log('SW registered:', r.scope))
+            .catch(e => console.log('SW failed:', e));
+        });
+      }
+    </script>
   </body>
 </html>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
-import { Brain, Clock, ArrowRight, CheckCircle } from "lucide-react";
+import { Brain, Clock, ArrowRight, CheckCircle, Lightbulb, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import api from "@/utils/api";
+import { playCorrectSound, playStreakSound } from "@/utils/sounds";
 
 export default function QuizInterface({ user }) {
   const { quizId } = useParams();
@@ -17,6 +18,7 @@ export default function QuizInterface({ user }) {
   const [startTime, setStartTime] = useState(Date.now());
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [submitting, setSubmitting] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function QuizInterface({ user }) {
 
     const timeTaken = (Date.now() - questionStartTime) / 1000;
     const currentQuestion = quiz.questions[currentIndex];
-    
+
     const answerData = {
       question_id: currentQuestion.id,
       user_answer: userAnswer,
@@ -66,6 +68,7 @@ export default function QuizInterface({ user }) {
 
     setAnswers([...answers, answerData]);
     setUserAnswer("");
+    setShowHint(false);
 
     if (currentIndex < quiz.questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -86,7 +89,7 @@ export default function QuizInterface({ user }) {
       const result = response.data;
       sessionStorage.setItem("quizResult", JSON.stringify(result));
       sessionStorage.removeItem("currentQuiz");
-      
+
       navigate(`/results/${result.id}`);
     } catch (error) {
       toast.error("Failed to submit quiz");
@@ -124,7 +127,7 @@ export default function QuizInterface({ user }) {
   const progress = ((currentIndex + 1) / quiz.questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950">
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-slate-200 z-50">
         <motion.div
@@ -169,7 +172,7 @@ export default function QuizInterface({ user }) {
             transition={{ duration: 0.3 }}
             className="w-full max-w-2xl"
           >
-            <div className="bg-white rounded-2xl border border-border shadow-xl p-10" data-testid="quiz-question-card">
+            <div className="bg-card rounded-2xl border border-border shadow-xl p-10" data-testid="quiz-question-card">
               {/* Question */}
               <div className="mb-10">
                 <div className="text-sm uppercase tracking-widest font-semibold text-muted-foreground mb-4">
@@ -178,6 +181,42 @@ export default function QuizInterface({ user }) {
                 <h2 className="text-2xl md:text-3xl font-serif text-primary leading-relaxed" data-testid="question-text">
                   {currentQuestion.question}
                 </h2>
+
+                {/* Story Context */}
+                {currentQuestion.story_context && (
+                  <div className="mt-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BookOpen className="w-4 h-4 text-accent" />
+                      <span className="text-xs font-semibold text-accent uppercase">Story</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground italic leading-relaxed">
+                      {currentQuestion.story_context}
+                    </p>
+                  </div>
+                )}
+
+                {/* Practice Mode Hint */}
+                {quiz.mode === "practice" && currentQuestion.hint && (
+                  <div className="mt-3">
+                    {showHint ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200"
+                      >
+                        💡 {currentQuestion.hint}
+                      </motion.div>
+                    ) : (
+                      <button
+                        onClick={() => setShowHint(true)}
+                        className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 transition-colors"
+                      >
+                        <Lightbulb className="w-4 h-4" />
+                        Show Hint
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Answer Input */}
@@ -189,20 +228,18 @@ export default function QuizInterface({ user }) {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => setUserAnswer(option.charAt(0))}
-                      className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
-                        userAnswer === option.charAt(0)
+                      className={`w-full text-left p-5 rounded-xl border-2 transition-all ${userAnswer === option.charAt(0)
                           ? "border-accent bg-accent/5 shadow-md"
                           : "border-border hover:border-accent/50 bg-white"
-                      }`}
+                        }`}
                       data-testid={`option-${idx}`}
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                            userAnswer === option.charAt(0)
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${userAnswer === option.charAt(0)
                               ? "border-accent bg-accent"
                               : "border-border"
-                          }`}
+                            }`}
                         >
                           {userAnswer === option.charAt(0) && (
                             <CheckCircle className="w-4 h-4 text-white" />

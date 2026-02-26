@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Brain, ArrowLeft, Loader } from "lucide-react";
+import { Brain, ArrowLeft, Loader, BookOpen, Clock, GraduationCap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import api from "@/utils/api";
+import DarkModeToggle from "@/components/DarkModeToggle";
 
 export default function QuizSelection({ user, onLogout }) {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ export default function QuizSelection({ user, onLogout }) {
     grade: "",
     difficulty: "medium",
     num_questions: 5,
+    mode: "timed",
+    story_mode: false,
   });
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function QuizSelection({ user, onLogout }) {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.subject || !formData.topic) {
       toast.error("Please fill in subject and topic");
       return;
@@ -52,10 +55,10 @@ export default function QuizSelection({ user, onLogout }) {
     try {
       const response = await api.post("/quiz/generate", formData);
       const quiz = response.data;
-      
+
       // Store quiz for the interface
       sessionStorage.setItem("currentQuiz", JSON.stringify(quiz));
-      
+
       toast.success("Quiz generated successfully!");
       navigate(`/quiz/${quiz.id}`);
     } catch (error) {
@@ -84,6 +87,7 @@ export default function QuizSelection({ user, onLogout }) {
               <Brain className="w-8 h-8 text-accent" />
               <span className="text-xl font-serif text-primary">Focus Learn</span>
             </div>
+            <DarkModeToggle />
           </div>
         </div>
       </header>
@@ -225,6 +229,54 @@ export default function QuizSelection({ user, onLogout }) {
                     <option value="15">15</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Quiz Mode */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Quiz Mode</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: "timed", label: "Timed", icon: Clock, desc: "Standard quiz" },
+                    { value: "practice", label: "Practice", icon: BookOpen, desc: "With hints" },
+                    { value: "exam", label: "Exam Prep", icon: GraduationCap, desc: "Strict mode" },
+                  ].map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, mode: m.value })}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${formData.mode === m.value
+                          ? "border-accent bg-accent/5 shadow-sm"
+                          : "border-input hover:border-accent/40"
+                        }`}
+                    >
+                      <m.icon className={`w-5 h-5 mb-1 ${formData.mode === m.value ? "text-accent" : "text-muted-foreground"}`} />
+                      <div className="text-sm font-medium text-primary">{m.label}</div>
+                      <div className="text-xs text-muted-foreground">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Story Mode Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl border-2 border-input bg-background">
+                <div className="flex items-center gap-3">
+                  <Sparkles className={`w-5 h-5 ${formData.story_mode ? "text-accent" : "text-muted-foreground"}`} />
+                  <div>
+                    <div className="text-sm font-medium text-primary">Story Mode</div>
+                    <div className="text-xs text-muted-foreground">Questions woven into a fun narrative</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, story_mode: !formData.story_mode })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${formData.story_mode ? "bg-accent" : "bg-muted"
+                    }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${formData.story_mode ? "translate-x-5" : "translate-x-0"
+                      }`}
+                  />
+                </button>
               </div>
 
               <Button
